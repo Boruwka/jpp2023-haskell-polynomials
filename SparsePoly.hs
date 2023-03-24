@@ -8,12 +8,12 @@ import Representation
 fromDP :: (Eq a, Num a) => DensePoly a -> SparsePoly a
 toDP :: (Eq a, Num a) => SparsePoly a -> DensePoly a
 
-fromDP (P tab) = S (from_dp_helper 0 tab) where
+fromDP (P tab) = S (reverse (from_dp_helper 0 tab)) where
     from_dp_helper k [] = []
     from_dp_helper k (0:tl) = from_dp_helper (k+1) tl
     from_dp_helper k (hd:tl) = ((k, hd):(from_dp_helper (k+1) tl))
 
-toDP (S tab) = P (to_dp_helper 0 tab) where
+toDP (S tab) = P (to_dp_helper 0 (reverse tab)) where
     to_dp_helper k [] = []
     to_dp_helper k ((m, wsp):tl) = if (k == m) then 
             wsp:(to_dp_helper (k+1) tl)
@@ -73,7 +73,7 @@ add_arrays ((k1, wsp1):tl1) ((k2, wsp2):tl2) =
         if k1 == k2 then 
             ((k1, (wsp1 + wsp2)):(add_arrays tl1 tl2))
         else 
-            if k1 < k2 then 
+            if k1 > k2 then 
                 ((k1, wsp1):(add_arrays tl1 ((k2, wsp2):tl2)))
             else 
                 ((k2, wsp2):(add_arrays tl2 ((k1, wsp1):tl1)))
