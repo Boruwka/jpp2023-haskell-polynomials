@@ -36,19 +36,30 @@ instance Polynomial SparsePoly where
     x = (S [(1, 0)])
     evalP (S []) x = 0
     evalP (S ((k, wsp):tl)) x = (x ^ k) * wsp + (evalP (S tl) x)
-    shiftP n (S []) = (S [])
-    shiftP n (S ((k, wsp):tl)) = (S (((k + n), wsp):(unS (shiftP n (S tl)))))
+    shiftP n (S s) = S (shift_array n s)
     degree (S []) = -1
     degree (S [(k, _)]) = k
     degree (S ((_, _):tl)) = degree (S tl)
     nullP (S []) = True
     nullP _ = False
+    
+shift_array :: Int -> [(Int, a)] -> [(Int, a)]
+shift_array n [] = []
+shift_array n ((k, wsp):tl) = ((k + n), wsp):(shift_array n tl)
+
+reduce_array :: (Eq a, Num a) => [(Int, a)] -> [(Int, a)] 
+reduce_array [] = []
+reduce_array ((exp, wsp):tl) = 
+    if wsp == 0 then 
+        (reduce_array tl)
+    else 
+        ((exp, wsp):(reduce_array tl)) 
 
 instance (Eq a, Num a) => Num (SparsePoly a) where
     (+) (S []) s = s
     (+) s (S []) = s
-    (+) (S tab1) (S tab2) = S (add_arrays tab1 tab2)            
-    (*) (S tab1) (S tab2) = S (multiply_arrays tab1 tab2)
+    (+) (S tab1) (S tab2) = S (reduce_array (add_arrays tab1 tab2))          
+    (*) (S tab1) (S tab2) = S (reduce_array (multiply_arrays tab1 tab2))
     negate (S []) = (S []) 
     negate (S ((k, wsp):tl)) = S ((k, -wsp):(unS (negate (S tl))))
     fromInteger 0 = (S [])
@@ -87,35 +98,23 @@ instance (Eq a, Num a) => Eq (SparsePoly a) where
 
 -- qrP s t | not(nullP t) = (q, r) iff s == q*t + r && degree r < degree t
 qrP :: (Eq a, Fractional a) => SparsePoly a -> SparsePoly a -> (SparsePoly a, SparsePoly a)
-qrP (S divident) (S divisor) = (S (fst res), S (snd res)) where
+qrP (S divident) (S divisor) = (S (reduce_array (fst res)), S (reduce_array (snd res))) where
     res = (divide_arrays divident divisor)
 
 divide_arrays :: (Eq a, Fractional a, Num a) => [(Int, a)] -> [(Int, a)] -> ([(Int, a)], [(Int, a)])
 divide_arrays [] tab = ([], [])
-divide_arrays tab [] = undefined
+divide_arrays tab [] = ([], [])
 divide_arrays ((ahdexp, ahdwsp):atl) ((bhdexp, bhdwsp):btl) = 
     if ahdexp < bhdexp then 
         ([], ((bhdexp, bhdwsp):btl))
     else 
         (res, g) where
-            res :: [(Int, a)]
-            res = add_arrays f (create_poly_tab (ahdexp / bhdexp) c)
-            h :: ([(Int, a)], [(Int, a)])   
-            h = divide_arrays atl e
-            f = fst h
-            g = fst h
-            f :: [(Int, a)]
-            g :: [(Int, a)]
-            e :: [(Int, a)]
+            res = add_arrays f (create_poly_tab (ahdexp - bhdexp) c)
+            (f, g) = divide_arrays atl e
             e = add_arrays btl d
-            d :: [(Int, a)]
-            d = map btl (\(exp, wsp) -> (exp, (wsp * (-c))))
-            c :: a
+            d = map (\(exp, wsp) -> (exp, (wsp * (negate c)))) btl
             c = (ahdwsp / bhdwsp)
 
-
-{-divide_arrays (dividenthd:dividenttl) (divisorhd:divisortl) = (add_arrays (make_sparse_from_wsp_exp ((fst dividenthd)//(fst divisorhd)) ((snd dividenthd)/(snd divisorhd))) (fractional (dividenttl) (e))))
-    where e = add_arrays divisortl (map divisortl (\x -> x * (-1) * ((snd dividenthd)/(snd divisorhd))))-}
 
 -- | Division example
 -- >>> let x = varP in qrP (x^2 - 1) (x -1) == ((x + 1), 0)
