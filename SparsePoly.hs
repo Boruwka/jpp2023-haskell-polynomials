@@ -38,8 +38,7 @@ instance Polynomial SparsePoly where
     evalP (S ((k, wsp):tl)) x = (x ^ k) * wsp + (evalP (S tl) x)
     shiftP n (S s) = S (shift_array n s)
     degree (S []) = -1
-    degree (S [(k, _)]) = k
-    degree (S ((_, _):tl)) = degree (S tl)
+    degree (S ((k, _):tl)) = k
     nullP (S []) = True
     nullP _ = False
     
@@ -99,21 +98,22 @@ instance (Eq a, Num a) => Eq (SparsePoly a) where
 -- qrP s t | not(nullP t) = (q, r) iff s == q*t + r && degree r < degree t
 qrP :: (Eq a, Fractional a) => SparsePoly a -> SparsePoly a -> (SparsePoly a, SparsePoly a)
 qrP (S divident) (S divisor) = (S (reduce_array (fst res)), S (reduce_array (snd res))) where
-    res = (divide_arrays (reverse divident) (reverse divisor))
+    res = (divide_arrays divident divisor)
 
 divide_arrays :: (Eq a, Fractional a, Num a) => [(Int, a)] -> [(Int, a)] -> ([(Int, a)], [(Int, a)])
 divide_arrays [] tab = ([], [])
-divide_arrays tab [] = ([], [])
+divide_arrays tab [] = undefined
 divide_arrays ((ahdexp, ahdwsp):atl) ((bhdexp, bhdwsp):btl) = 
     if ahdexp < bhdexp then 
-        ([], ((bhdexp, bhdwsp):btl))
+        ([], ((ahdexp, ahdwsp):atl))
     else 
         (res, g) where
-            res = add_arrays f (create_poly_tab (ahdexp - bhdexp) c)
-            (f, g) = divide_arrays atl e
+            res = add_arrays f (create_poly_tab h c)
+            (f, g) = divide_arrays e ((bhdexp, bhdwsp):btl)
             e = add_arrays btl d
-            d = map (\(exp, wsp) -> (exp, (wsp * (negate c)))) btl
+            d = map (\(exp, wsp) -> ((exp + h), (wsp * (negate c)))) btl -- btl * (-c) * x^h
             c = (ahdwsp / bhdwsp)
+            h = ahdexp - bhdexp
 
 
 -- | Division example
