@@ -56,8 +56,6 @@ reduce_array ((exp, wsp):tl) =
         ((exp, wsp):(reduce_array tl)) 
 
 instance (Eq a, Num a) => Num (SparsePoly a) where
-    (+) (S []) s = s
-    (+) s (S []) = s
     (+) (S tab1) (S tab2) = S (reduce_array (add_arrays tab1 tab2))          
     (*) (S tab1) (S tab2) = S (reduce_array (multiply_arrays tab1 tab2))
     negate (S []) = (S []) 
@@ -69,6 +67,8 @@ instance (Eq a, Num a) => Num (SparsePoly a) where
     
     
 add_arrays :: (Num a, Eq a) => [(Int, a)] -> [(Int, a)] -> [(Int, a)]
+add_arrays tab [] = tab
+add_arrays [] tab = tab
 add_arrays ((k1, wsp1):tl1) ((k2, wsp2):tl2) = 
         if k1 == k2 then 
             ((k1, (wsp1 + wsp2)):(add_arrays tl1 tl2))
@@ -82,7 +82,7 @@ add_arrays ((k1, wsp1):tl1) ((k2, wsp2):tl2) =
 multiply_arrays :: (Eq a, Num a) => [(Int, a)] -> [(Int, a)] -> [(Int, a)]
 multiply_arrays [] _ = []
 multiply_arrays _ [] = []
-multiply_arrays ((k, wsp):tl) tab = ((shift_array k).(multiply_by wsp)) tab
+multiply_arrays ((k, wsp):tl) tab = add_arrays (((shift_array k).(multiply_by wsp)) tab) (multiply_arrays tl tab)
     where 
         shift_array n [] = []
         shift_array n ((k, wsp):tl) = (((k + n), wsp):(shift_array n tl))
@@ -99,7 +99,7 @@ instance (Eq a, Num a) => Eq (SparsePoly a) where
 -- qrP s t | not(nullP t) = (q, r) iff s == q*t + r && degree r < degree t
 qrP :: (Eq a, Fractional a) => SparsePoly a -> SparsePoly a -> (SparsePoly a, SparsePoly a)
 qrP (S divident) (S divisor) = (S (reduce_array (fst res)), S (reduce_array (snd res))) where
-    res = (divide_arrays divident divisor)
+    res = (divide_arrays (reverse divident) (reverse divisor))
 
 divide_arrays :: (Eq a, Fractional a, Num a) => [(Int, a)] -> [(Int, a)] -> ([(Int, a)], [(Int, a)])
 divide_arrays [] tab = ([], [])
