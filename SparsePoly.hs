@@ -31,6 +31,7 @@ instance Functor SparsePoly where
 
 instance Polynomial SparsePoly where
     zeroP = (S []) 
+    constP 0 = (S [])
     constP c = (S [(0, c)])
     varP = (S [(1, 0)])
     x = (S [(1, 0)])
@@ -42,28 +43,27 @@ instance Polynomial SparsePoly where
     nullP (S []) = True
     nullP _ = False
     
-shift_array :: Int -> [(Int, a)] -> [(Int, a)]
+shift_array :: (Num a) => Int -> [(Int, a)] -> [(Int, a)]
 shift_array n [] = []
 shift_array n ((k, wsp):tl) = ((k + n), wsp):(shift_array n tl)
 
-reduce_array :: (Eq a, Num a) => [(Int, a)] -> [(Int, a)] 
+reduce_array :: (Num a, Eq a) => [(Int, a)] -> [(Int, a)] 
 reduce_array [] = []
-reduce_array ((exp, wsp):tl) = 
-    if wsp == 0 then 
-        (reduce_array tl)
-    else 
-        ((exp, wsp):(reduce_array tl)) 
+reduce_array ((exp, 0):tl) = (reduce_array tl)
+reduce_array ((exp, wsp):tl) = ((exp, wsp):(reduce_array tl)) 
 
 instance (Eq a, Num a) => Num (SparsePoly a) where
     (+) (S tab1) (S tab2) = S (reduce_array (add_arrays tab1 tab2))          
     (*) (S tab1) (S tab2) = S (reduce_array (multiply_arrays tab1 tab2))
-    negate (S []) = (S []) 
-    negate (S ((k, wsp):tl)) = S ((k, -wsp):(unS (negate (S tl))))
+    negate (S tab) = (S (reduce_array (negate_array tab)))
     fromInteger 0 = (S [])
     fromInteger k = (S [(1, (fromInteger k))])
     abs = undefined
     signum = undefined
-    
+
+negate_array :: (Num a) => [(Int, a)] -> [(Int, a)]
+negate_array [] = []
+negate_array ((k, wsp):tl) = ((k, -wsp):(negate_array tl))    
     
 add_arrays :: (Num a, Eq a) => [(Int, a)] -> [(Int, a)] -> [(Int, a)]
 add_arrays tab [] = tab
@@ -110,7 +110,7 @@ divide_arrays ((ahdexp, ahdwsp):atl) ((bhdexp, bhdwsp):btl) =
         (res, g) where
             res = add_arrays f (create_poly_tab h c)
             (f, g) = divide_arrays e ((bhdexp, bhdwsp):btl)
-            e = add_arrays btl d
+            e = add_arrays atl d
             d = map (\(exp, wsp) -> ((exp + h), (wsp * (negate c)))) btl -- btl * (-c) * x^h
             c = (ahdwsp / bhdwsp)
             h = ahdexp - bhdexp

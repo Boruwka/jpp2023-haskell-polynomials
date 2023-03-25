@@ -8,20 +8,26 @@ instance Functor DensePoly where
 
 instance Polynomial DensePoly where
     zeroP = (P [])
+    constP 0 = (P [])
     constP c = (P [c])
     varP = (P [0, 1])
     x = (P [0, 1])
     evalP (P []) x = 0
     evalP (P (hd:tl)) x = hd + x * (evalP (P tl) x) -- warto by przerobić na ogonowe
-    shiftP n (P tab) = P (shift_array n tab)
+    shiftP n (P tab) = (P (reduce_array (shift_array n tab)))
     degree (P []) = -1
     degree (P (hd:tl)) = 1 + (degree (P tl))
     nullP (P []) = True
     nullP _ = False
 
 shift_array :: (Num a) => Int -> [a] -> [a]
+shift_array n [] = []
 shift_array 0 tab = tab
-shift_array n tab = shift_array (n-1) (0:tab)
+shift_array n (hd:tl) = 
+    if n > 0 then 
+        shift_array (n-1) (0:(hd:tl))
+    else 
+        shift_array (n+1) tl
 
 reduce_array :: (Num a, Eq a) => [a] -> [a]  -- deletes leading zeros
 reduce_array [] = []
@@ -42,12 +48,15 @@ only_zeros (hd:tl) = False
 instance (Eq a, Num a) => Num (DensePoly a) where
     (+) (P tab1) (P tab2) = P (reduce_array (add_arrays tab1 tab2))
     (*) (P tab1) (P tab2) = P (reduce_array (multiply_arrays tab1 tab2))
-    negate (P []) = (P [])
-    negate (P (h:t)) = P ((-h):(unP (negate (P t))))
+    negate (P tab) = P (reduce_array (negate_array tab))
     abs = undefined
     signum p = undefined 
     fromInteger 0 = (P [])
     fromInteger k = (P [(fromInteger k)])
+   
+negate_array :: (Num a) => [a] -> [a] 
+negate_array [] = []
+negate_array (h:t) = ((-h):(negate_array t))
     
     
 add_arrays :: (Num a) => [a] -> [a] -> [a]
@@ -72,10 +81,11 @@ multiply_helper shifter multiplier = (multiply multiplier).(shift_array shifter)
 -- >>> let x = varP :: DensePoly Integer in x^3 - 1
 -- P {unP = [-1,0,0,1]}
 instance (Eq a, Num a) => Eq (DensePoly a) where
-    (==) (P []) (P []) = True
+    (==) (P tab1) (P tab2) = nullP (P (reduce_array (add_arrays tab1 (negate_array tab2))))
+    {-(==) (P []) (P []) = True
     (==) (P []) (P tab) = only_zeros tab
     (==) (P tab) (P []) = only_zeros tab
-    (==) (P (hd1:tl1)) (P (hd2:tl2)) = ((hd1 == hd2) && ((==) (P tl1) (P tl2))) 
+    (==) (P (hd1:tl1)) (P (hd2:tl2)) = ((hd1 == hd2) && ((==) (P tl1) (P tl2))) -}
 
 -- |
 -- >>>  P [1,2] == P [1,2]
