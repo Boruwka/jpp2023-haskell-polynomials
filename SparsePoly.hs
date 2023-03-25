@@ -79,10 +79,9 @@ add_arrays ((k1, wsp1):tl1) ((k2, wsp2):tl2) =
 multiply_arrays :: (Eq a, Num a) => [(Int, a)] -> [(Int, a)] -> [(Int, a)]
 multiply_arrays [] _ = []
 multiply_arrays _ [] = []
-multiply_arrays ((k, wsp):tl) tab = add_arrays (((shift_array k).(multiply_by wsp)) tab) (multiply_arrays tl tab)
+multiply_arrays ((exp, wsp):tl) tab = add_arrays (((shift_array exp).(multiply_by wsp)) tab) (multiply_arrays tl tab)
     where 
-        multiply_by a [] = []
-        multiply_by a ((k, wsp):tl) = ((k, (wsp * a)):(multiply_by a tl))
+        multiply_by a tab = map (\(exp, wsp) -> (exp, (wsp * a))) tab
 
 
 create_poly_tab :: Int -> a -> [(Int, a)]
@@ -103,9 +102,9 @@ divide_arrays ((ahdexp, ahdwsp):atl) ((bhdexp, bhdwsp):btl) =
     if ahdexp < bhdexp then 
         ([], ((ahdexp, ahdwsp):atl))
     else 
-        (res, g) where
+        (res, remainder) where
             res = add_arrays f (create_poly_tab h c)
-            (f, g) = divide_arrays e ((bhdexp, bhdwsp):btl)
+            (f, remainder) = divide_arrays e ((bhdexp, bhdwsp):btl)
             e = add_arrays atl d
             d = map (\(exp, wsp) -> ((exp + h), (wsp * (negate c)))) btl -- btl * (-c) * x^h
             c = (ahdwsp / bhdwsp)
