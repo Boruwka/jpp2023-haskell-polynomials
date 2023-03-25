@@ -12,13 +12,16 @@ instance Polynomial DensePoly where
     constP c = (P [c])
     varP = (P [0, 1])
     x = (P [0, 1])
-    evalP (P []) x = 0
-    evalP (P (hd:tl)) x = hd + x * (evalP (P tl) x) -- warto by przerobić na ogonowe
+    evalP (P tab) x = eval_array_taily x 0 1 tab
     shiftP n (P tab) = (P (reduce_array (shift_array n tab)))
-    degree (P []) = -1
-    degree (P (hd:tl)) = 1 + (degree (P tl))
+    degree (P tab) = (length tab) - 1
     nullP (P []) = True
     nullP _ = False
+    
+    
+eval_array_taily :: (Num a) => a -> a -> a -> [a] -> a
+eval_array_taily x acc mul [] = acc
+eval_array_taily x acc mul (hd:tl) = eval_array_taily x (hd*mul + acc) (mul*x) tl
 
 shift_array :: (Num a) => Int -> [a] -> [a]
 shift_array n [] = []
@@ -55,8 +58,7 @@ instance (Eq a, Num a) => Num (DensePoly a) where
     fromInteger k = (P [(fromInteger k)])
    
 negate_array :: (Num a) => [a] -> [a] 
-negate_array [] = []
-negate_array (h:t) = ((-h):(negate_array t))
+negate_array tab = map (\x -> (-x)) tab
     
     
 add_arrays :: (Num a) => [a] -> [a] -> [a]
@@ -82,10 +84,6 @@ multiply_helper shifter multiplier = (multiply multiplier).(shift_array shifter)
 -- P {unP = [-1,0,0,1]}
 instance (Eq a, Num a) => Eq (DensePoly a) where
     (==) (P tab1) (P tab2) = nullP (P (reduce_array (add_arrays tab1 (negate_array tab2))))
-    {-(==) (P []) (P []) = True
-    (==) (P []) (P tab) = only_zeros tab
-    (==) (P tab) (P []) = only_zeros tab
-    (==) (P (hd1:tl1)) (P (hd2:tl2)) = ((hd1 == hd2) && ((==) (P tl1) (P tl2))) -}
 
 -- |
 -- >>>  P [1,2] == P [1,2]

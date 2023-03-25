@@ -44,13 +44,12 @@ instance Polynomial SparsePoly where
     nullP _ = False
     
 shift_array :: (Num a) => Int -> [(Int, a)] -> [(Int, a)]
-shift_array n [] = []
-shift_array n ((k, wsp):tl) = ((k + n), wsp):(shift_array n tl)
+shift_array n tab = map (\(k, wsp) -> ((k+n), wsp)) tab
+
 
 reduce_array :: (Num a, Eq a) => [(Int, a)] -> [(Int, a)] 
-reduce_array [] = []
-reduce_array ((exp, 0):tl) = (reduce_array tl)
-reduce_array ((exp, wsp):tl) = ((exp, wsp):(reduce_array tl)) 
+reduce_array tab = filter (\(exp, wsp) -> (wsp /= 0)) tab
+
 
 instance (Eq a, Num a) => Num (SparsePoly a) where
     (+) (S tab1) (S tab2) = S (reduce_array (add_arrays tab1 tab2))          
@@ -62,8 +61,7 @@ instance (Eq a, Num a) => Num (SparsePoly a) where
     signum = undefined
 
 negate_array :: (Num a) => [(Int, a)] -> [(Int, a)]
-negate_array [] = []
-negate_array ((k, wsp):tl) = ((k, -wsp):(negate_array tl))    
+negate_array tab = map (\(k, wsp) -> (k, -wsp)) tab 
     
 add_arrays :: (Num a, Eq a) => [(Int, a)] -> [(Int, a)] -> [(Int, a)]
 add_arrays tab [] = tab
@@ -83,8 +81,6 @@ multiply_arrays [] _ = []
 multiply_arrays _ [] = []
 multiply_arrays ((k, wsp):tl) tab = add_arrays (((shift_array k).(multiply_by wsp)) tab) (multiply_arrays tl tab)
     where 
-        shift_array n [] = []
-        shift_array n ((k, wsp):tl) = (((k + n), wsp):(shift_array n tl))
         multiply_by a [] = []
         multiply_by a ((k, wsp):tl) = ((k, (wsp * a)):(multiply_by a tl))
 
