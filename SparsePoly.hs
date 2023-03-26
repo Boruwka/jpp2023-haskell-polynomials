@@ -33,10 +33,10 @@ instance Polynomial SparsePoly where
     zeroP = (S []) 
     constP 0 = (S [])
     constP c = (S [(0, c)])
-    varP = (S [(1, 0)])
-    x = (S [(1, 0)])
+    varP = (S [(1, 1)])
+    x = (S [(1, 1)])
     evalP (S []) x = 0
-    evalP (S ((k, wsp):tl)) x = (x ^ k) * wsp + (evalP (S tl) x)
+    evalP (S ((k, wsp):tl)) x = ((x ^ k) * wsp) + (evalP (S tl) x)
     shiftP n (S s) = S (shift_array n s)
     degree (S []) = -1
     degree (S ((k, _):tl)) = k
@@ -56,7 +56,7 @@ instance (Eq a, Num a) => Num (SparsePoly a) where
     (*) (S tab1) (S tab2) = S (reduce_array (multiply_arrays tab1 tab2))
     negate (S tab) = (S (reduce_array (negate_array tab)))
     fromInteger 0 = (S [])
-    fromInteger k = (S [(1, (fromInteger k))])
+    fromInteger k = (S [(0, (fromInteger k))])
     abs = undefined
     signum = undefined
 

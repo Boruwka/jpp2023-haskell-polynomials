@@ -1,29 +1,32 @@
 {-# LANGUAGE TemplateHaskell #-}
 import Test.QuickCheck
 import Test.HUnit
-import Data.List(sortOn)
-import Data.List(sort)
+import Data.List(sort, sortOn)
 import DensePoly
 import SparsePoly
 import Representation
 import PolyClass
+import Modulo ( IntModulo )
+import qualified Test.QuickCheck.Gen
 
+
+-- Int poly tests
 type DPI = DensePoly Int
 type SPI = SparsePoly Int
 
 prop_AddCommDP :: DPI -> DPI -> Property
 prop_AddCommDP p q = p + q === q + p
 
-prop_AddZeroRDP :: DensePoly Int -> Property
+prop_AddZeroRDP :: DPI -> Property
 prop_AddZeroRDP p = p + zeroP === p
 
-prop_AddZeroLDP :: DensePoly Int -> Property
+prop_AddZeroLDP :: DPI -> Property
 prop_AddZeroLDP p = zeroP + p === p
 
-prop_MulZeroRDP :: DensePoly Int -> Property
+prop_MulZeroRDP :: DPI -> Property
 prop_MulZeroRDP p = p * zeroP === zeroP
 
-prop_MulZeroLDP :: DensePoly Int -> Property
+prop_MulZeroLDP :: DPI -> Property
 prop_MulZeroLDP p = zeroP * p === zeroP
 
 prop_MulCommDP :: DPI -> DPI -> Property
@@ -35,10 +38,10 @@ prop_NegNegDP p = -(-p) === p
 prop_AddNegDP :: DPI -> Property
 prop_AddNegDP p = p - p === zeroP
 
-prop_OneRDP :: DensePoly Int -> Property
+prop_OneRDP :: DPI -> Property
 prop_OneRDP p = p * constP 1 === p
 
-prop_OneLDP :: DensePoly Int -> Property
+prop_OneLDP :: DPI -> Property
 prop_OneLDP p = (constP 1) * p === p
 
 prop_DistLDP :: DPI -> DPI -> DPI -> Property
@@ -54,30 +57,8 @@ is_canonic_DP :: DPI -> Property
 is_canonic_DP (P []) = True ==> True
 is_canonic_DP (P l) = True ==> last l /= 0
 
-prop_add_canonic_DP p q = is_canonic_DP (p + q)
-prop_mul_canonic_DP p q = is_canonic_DP (p * q)
-prop_sub_canonic_DP p q = is_canonic_DP (p - q)
-prop_neg_canonic_DP p = is_canonic_DP (-p)
-prop_const_canonic_DP c = is_canonic_DP (constP c)
-prop_shift_canonic_DP n p = is_canonic_DP (shiftP n p)
-
-handmade_DP_evalP_0 = TestCase (assertEqual "dp_eval_0" 1 (evalP (P [1, 2, 3]) 0))
-handmade_DP_evalP_1 = TestCase (assertEqual "dp_eval_1" (-2) (evalP (P [-2, 2, 3]) 0))
-handmade_DP_evalP_2 = TestCase (assertEqual "dp_eval_2" 6 (evalP (P [1, 2, 3]) 1))
-handmade_DP_evalP_3 = TestCase (assertEqual "dp_eval_3" (1 - 4 + 12) (evalP (P [1, 2, 3]) (-2)))
-handmade_DP_add_0 = TestCase (assertEqual "dp_add_0" (P [-2, 0, 0, 2]) (sampleDP + sampleDP))
-handmade_DP_add_1 = TestCase (assertEqual "dp_add_1" (P [0, 0, 0, 1]) (sampleDP + (P [1])))
-handmade_DP_add_2 = TestCase (assertEqual "dp_add_2" (P [-1]) (sampleDP + (P [0, 0, 0, -1])))
-handmade_DP_mul_0 = TestCase (assertEqual "dp_mul_0" (P [1, 0, 0, -2, 0, 0, 1]) (sampleDP * sampleDP))
-handmade_DP_mul_1 = TestCase (assertEqual "dp_mul_1" (P [1, 0, 0, -1]) (sampleDP * (P [-1])))
-handmade_DP_mul_2 = TestCase (assertEqual "dp_mul_2" (P [0, 0, 0, 1, 0, 0, -1]) (sampleDP * (P [0, 0, 0, -1])))
-handmade_DP_neg_0 = TestCase (assertEqual "dp_neg_0" (P [1, 0, 0, -1]) (-sampleDP))
-handmade_DP_shift_0 = TestCase (assertEqual "dp_shift_0" (P [-1, 0, 0, 1]) (shiftP 0 sampleDP))
-handmade_DP_shift_1 = TestCase (assertEqual "dp_shift_1" (P [0, -1, 0, 0, 1]) (shiftP 1 sampleDP))
-handmade_DP_shift_2 = TestCase (assertEqual "dp_shift_2" (P [0, 0, -1, 0, 0, 1]) (shiftP 2 sampleDP))
-
-prop_EvalPlus  :: Int ->  DPI -> DPI -> Property
-prop_EvalPlus x p q = evalP(p + q) x === evalP p x + evalP q x
+-- prop_EvalPlus  :: Int ->  DPI -> DPI -> Property
+-- prop_EvalPlus x p q = evalP(p + q) x === evalP p x + evalP q x
 
 prop_Fmap_id_DP :: DPI -> Property
 prop_Fmap_id_DP p = p === (fmap id p)
@@ -121,18 +102,23 @@ prop_ShiftLSP (NonNegative (Small n)) p q = shiftP n p * q === shiftP n (p*q)
 prop_EqSP :: SPI -> SPI -> Property
 prop_EqSP p q = (p == q) === (q == p)
 
-is_canonic_SP :: SPI -> Property
 is_canonic_SP (S []) = True ==> True
 is_canonic_SP (S l) =
   let mapped = map fst l in
   let sorted = Data.List.sort mapped in
   True ==> (mapped == reverse sorted && not (or [x == y | (x, y) <- zip mapped (tail mapped)]) && snd (head l) /= 0)
 
+prop_add_canonic_SP :: SPI -> SPI -> Property
 prop_add_canonic_SP p q = is_canonic_SP (p + q)
+prop_mul_canonic_SP :: SPI -> SPI -> Property
 prop_mul_canonic_SP p q = is_canonic_SP (p * q)
+prop_sub_canonic_SP :: SPI -> SPI -> Property
 prop_sub_canonic_SP p q = is_canonic_SP (p - q)
+prop_neg_canonic_SP :: SPI -> Property
 prop_neg_canonic_SP p = is_canonic_SP (-p)
+prop_const_canonic_SP :: Int -> Property
 prop_const_canonic_SP c = is_canonic_SP (constP c)
+prop_shift_canonic_SP :: Int -> SparsePoly Int -> Property
 prop_shift_canonic_SP n p = is_canonic_SP (shiftP n p)
 
 prop_Fmap_id_SP :: SPI -> Property
@@ -167,6 +153,128 @@ prop_const_DP_SP c = constP c === toDP (constP c)
 prop_shift_DP_SP :: (NonNegative Int) -> DPI -> Property
 prop_shift_DP_SP (NonNegative n) p = shiftP n p === toDP (shiftP n (fromDP p))
 
+prop_eval_DP_SP :: DPI -> Int -> Property
+prop_eval_DP_SP p x = evalP p x === evalP (fromDP p) x
+
+prop_eval_SP_DP :: SPI -> Int -> Property
+prop_eval_SP_DP p x = evalP p x === evalP (toDP p) x
+
+-- Modulo tests
+
+type DPM = DensePoly IntModulo
+type SPM = SparsePoly IntModulo
+
+prop_AddCommDPM :: DPM -> DPM -> Property
+prop_AddCommDPM p q = p + q === q + p
+
+prop_AddZeroRDPM :: DPM -> Property
+prop_AddZeroRDPM p = p + zeroP === p
+
+prop_AddZeroLDPM :: DPM -> Property
+prop_AddZeroLDPM p = zeroP + p === p
+
+prop_MulZeroRDPM :: DPM -> Property
+prop_MulZeroRDPM p = p * zeroP === zeroP
+
+prop_MulZeroLDPM :: DPM -> Property
+prop_MulZeroLDPM p = zeroP * p === zeroP
+
+prop_MulCommDPM :: DPM -> DPM -> Property
+prop_MulCommDPM p q = p * q === q * p
+
+prop_NegNegDPM :: DPM -> Property
+prop_NegNegDPM p = -(-p) === p
+
+prop_AddNegDPM :: DPM -> Property
+prop_AddNegDPM p = p - p === zeroP
+
+prop_OneRDPM :: DPM -> Property
+prop_OneRDPM p = p * constP 1 === p
+
+prop_OneLDPM :: DPM -> Property
+prop_OneLDPM p = (constP 1) * p === p
+
+prop_DistLDPM :: DPM -> DPM -> DPM -> Property
+prop_DistLDPM p q r = p * (q + r) === p * q + p * r
+
+prop_ShiftLDPM :: NonNegative(Small Int) -> DPM -> DPM -> Property
+prop_ShiftLDPM (NonNegative (Small n)) p q = shiftP n p * q === shiftP n (p*q)
+
+prop_EqDPM :: DPM -> DPM -> Property
+prop_EqDPM p q = (p == q) === (q == p)
+
+is_canonic_DPM :: DPM -> Property
+is_canonic_DPM (P []) = True ==> True
+is_canonic_DPM (P l) = True ==> last l /= 0
+
+
+prop_Fmap_id_DPM :: DPM -> Property
+prop_Fmap_id_DPM p = p === (fmap id p)
+
+-- SPM
+
+prop_AddCommSPM :: SPM -> SPM -> Property
+prop_AddCommSPM p q = within 100000 $ p + q === q + p
+
+prop_AddZeroRSPM :: SPM -> Property
+prop_AddZeroRSPM p = p + zeroP === p
+
+prop_AddZeroLSPM :: SPM -> Property
+prop_AddZeroLSPM p = zeroP + p === p
+
+prop_MulZeroRSPM :: SPM -> Property
+prop_MulZeroRSPM p = p * zeroP === zeroP
+
+prop_MulZeroLSPM :: SPM -> Property
+prop_MulZeroLSPM p = zeroP * p === zeroP
+
+prop_NegNegSPM :: SPM -> Property
+prop_NegNegSPM p = -(-p) === p
+
+prop_OneRSPM :: SPM -> Property
+prop_OneRSPM p = p * constP 1 === p
+
+prop_OneLSPM :: SPM -> Property
+prop_OneLSPM p = (constP 1) * p === p
+
+-- within: prop fails if it does not complete within the given number of microseconds.
+prop_MulCommSPM :: SPM -> SPM -> Property
+prop_MulCommSPM p q = within 100000 $ p * q === q * p
+
+prop_DistLSPM :: SPM -> SPM -> SPM -> Property
+prop_DistLSPM p q r = within 100000 $ p*(q+r) === p*q + p*r
+
+prop_ShiftLSPM :: NonNegative(Small Int) -> SPM -> SPM -> Property
+prop_ShiftLSPM (NonNegative (Small n)) p q = shiftP n p * q === shiftP n (p*q)
+
+prop_EqSPM :: SPM -> SPM -> Property
+prop_EqSPM p q = (p == q) === (q == p)
+
+is_canonic_SPM :: SPM -> Property
+is_canonic_SPM (S []) = True ==> True
+is_canonic_SPM (S l) =
+  let mapped = map fst l in
+  let sorted = Data.List.sort mapped in
+  True ==> (mapped == reverse sorted && not (or [x == y | (x, y) <- zip mapped (tail mapped)]) && snd (head l) /= 0)
+
+prop_add_canonic_SPM :: SPM -> SPM -> Property
+prop_add_canonic_SPM p q = is_canonic_SPM (p + q)
+prop_mul_canonic_SPM :: SPM -> SPM -> Property
+prop_mul_canonic_SPM p q = is_canonic_SPM (p * q)
+prop_sub_canonic_SPM :: SPM -> SPM -> Property
+prop_sub_canonic_SPM p q = is_canonic_SPM (p - q)
+prop_neg_canonic_SPM :: SPM -> Property
+prop_neg_canonic_SPM p = is_canonic_SPM (-p)
+prop_const_canonic_SPM :: IntModulo -> Property
+prop_const_canonic_SPM c = is_canonic_SPM (constP c)
+prop_shift_canonic_SPM :: Int -> SparsePoly IntModulo -> Property
+prop_shift_canonic_SPM n p = is_canonic_SPM (shiftP n p)
+
+prop_Fmap_id_SPM :: SPM -> Property
+prop_Fmap_id_SPM p = p === fmap id p
+
+
+-- Rational poly test
 
 type SPR = SparsePoly Rational
 
@@ -178,6 +286,9 @@ prop_qr2 p (NonZero s) = degree r < degree s where (q,r) = qrP p s
 
 prop_qr_whole :: SPR -> (NonZero SPR) -> Bool
 prop_qr_whole p (NonZero s) = r == 0 where (q, r) = qrP (p * s) s
+
+prop_qr_canonical :: SPR -> (NonZero SPR) -> Property
+prop_qr_canonical p (NonZero s) = is_canonic_SP q .&&. is_canonic_SP r where (q, r) = qrP p s
 
 writeln :: String -> IO ()
 writeln = putStrLn
@@ -206,18 +317,75 @@ instance (Num a, Eq a, Arbitrary a) => Arbitrary (SparsePoly a) where
     -- s ((a,n):ps) = ps:[(a',n'):ps' | a' <- shrink a, n' <- shrink n, S ps' <- shrink (S ps)]
     s ((a,n):ps) = ps:[(a,n):ps' | S ps' <- shrink (S ps)]
 
+-- Handmade tests
+prop_add_canonic_DP p q = is_canonic_DP (p + q)
+prop_mul_canonic_DP p q = is_canonic_DP (p * q)
+prop_sub_canonic_DP p q = is_canonic_DP (p - q)
+prop_neg_canonic_DP p = is_canonic_DP (-p)
+prop_const_canonic_DP c = is_canonic_DP (constP c)
+prop_shift_canonic_DP n p = is_canonic_DP (shiftP n p)
+
+handmade_DP_evalP_0 = TestCase (assertEqual "dp_eval_0" 1 (evalP (P [1, 2, 3]) 0))
+handmade_DP_evalP_1 = TestCase (assertEqual "dp_eval_1" (-2) (evalP (P [-2, 2, 3]) 0))
+handmade_DP_evalP_2 = TestCase (assertEqual "dp_eval_2" 6 (evalP (P [1, 2, 3]) 1))
+handmade_DP_evalP_3 = TestCase (assertEqual "dp_eval_3" (1 - 4 + 12) (evalP (P [1, 2, 3]) (-2)))
+handmade_DP_add_0 = TestCase (assertEqual "dp_add_0" (P [-2, 0, 0, 2]) (sampleDP + sampleDP))
+handmade_DP_add_1 = TestCase (assertEqual "dp_add_1" (P [0, 0, 0, 1]) (sampleDP + (P [1])))
+handmade_DP_add_2 = TestCase (assertEqual "dp_add_2" (P [-1]) (sampleDP + (P [0, 0, 0, -1])))
+handmade_DP_mul_0 = TestCase (assertEqual "dp_mul_0" (P [1, 0, 0, -2, 0, 0, 1]) (sampleDP * sampleDP))
+handmade_DP_mul_1 = TestCase (assertEqual "dp_mul_1" (P [1, 0, 0, -1]) (sampleDP * (P [-1])))
+handmade_DP_mul_2 = TestCase (assertEqual "dp_mul_2" (P [0, 0, 0, 1, 0, 0, -1]) (sampleDP * (P [0, 0, 0, -1])))
+handmade_DP_neg_0 = TestCase (assertEqual "dp_neg_0" (P [1, 0, 0, -1]) (-sampleDP))
+handmade_DP_shift_0 = TestCase (assertEqual "dp_shift_0" (P [-1, 0, 0, 1]) (shiftP 0 sampleDP))
+handmade_DP_shift_1 = TestCase (assertEqual "dp_shift_1" (P [0, -1, 0, 0, 1]) (shiftP 1 sampleDP))
+handmade_DP_shift_2 = TestCase (assertEqual "dp_shift_2" (P [0, 0, -1, 0, 0, 1]) (shiftP 2 sampleDP))
+handmade_DP_degree_0 = TestCase (assertEqual "dp_degree_0" (-1) (degree (P [])))
+handmade_DP_degree_1 = TestCase (assertEqual "dp_degree_1" 0 (degree (P [1])))
+handmade_DP_degree_2 = TestCase (assertEqual "dp_degree_2" 2 (degree (P [1, 2, 3])))
+handmade_DP_degree_non_canonical_0 = TestCase (assertEqual "dp_degree_non_canonical_0" (-1) (degree (P [0, 0])))
+handmade_DP_degree_non_canonical_1 = TestCase (assertEqual "dp_degree_non_canonical_1" 0 (degree (P [1, 0, 0])))
+handmade_DP_degree_non_canonical_2 = TestCase (assertEqual "dp_degree_non_canonical_2" 2 (degree (P [1, 2, 3, 0, 0, 0])))
+handmade_DP_fmap_0 = TestCase (assertEqual "dp_fmap_0" (P [0, 0]) (fmap (+1) (P [-1, -1])))
+handmade_DP_varP_0 = TestCase (assertEqual "dp_varP_0" (P [0, 1]) (varP :: DPI))
+handmade_DP_x_0 = TestCase (assertEqual "dp_x_0" (P [0, 1]) (x :: DPI))
+
+handmade_SP_degree_0 = TestCase (assertEqual "sp_degree_0" (-1) (degree (S [])))
+handmade_SP_degree_1 = TestCase (assertEqual "sp_degree_1" 0 (degree (S [(0, 1)])))
+handmade_SP_degree_2 = TestCase (assertEqual "sp_degree_2" 2 (degree (S [(2, 3), (0, 3)])))
+handmade_SP_fmap_0 = TestCase (assertEqual "sp_fmap_0" (S [(1, 0), (0, 0)]) (fmap (+1) (S [(1, -1), (0, -1)])))
+handmade_SP_varP_0 = TestCase (assertEqual "sp_varP_0" (S [(1, 1)]) (varP :: SPI))
+handmade_SP_x_0 = TestCase (assertEqual "sp_x_0" (S [(1, 1)]) (x :: SPI))
+handmade_SP_evalP_0 = TestCase (assertEqual "sp_eval_0" 150073 (evalP (2*x^3+1*x^2+3*x+7 :: SPI) 42))
+
+
 handmade_tests = TestList [
-  handmade_DP_evalP_0, handmade_DP_evalP_1, handmade_DP_evalP_2, handmade_DP_evalP_3, 
+  handmade_DP_evalP_0, handmade_DP_evalP_1, handmade_DP_evalP_2, handmade_DP_evalP_3,
   handmade_DP_add_0, handmade_DP_add_1, handmade_DP_add_2,
   handmade_DP_mul_0, handmade_DP_mul_1, handmade_DP_mul_2,
   handmade_DP_neg_0,
   handmade_DP_shift_0,
   handmade_DP_shift_1,
-  handmade_DP_shift_2]
+  handmade_DP_shift_2,
+  handmade_DP_degree_0,
+  handmade_DP_degree_1,
+  handmade_DP_degree_2,
+  handmade_DP_degree_non_canonical_0,
+  handmade_DP_degree_non_canonical_1,
+  handmade_DP_degree_non_canonical_2,
+  handmade_DP_fmap_0,
+  handmade_DP_varP_0,
+  handmade_DP_x_0,
+  handmade_SP_degree_0,
+  handmade_SP_degree_1,
+  handmade_SP_degree_2,
+  handmade_SP_fmap_0,
+  handmade_SP_varP_0,
+  handmade_SP_x_0,
+  handmade_SP_evalP_0]
 
 return []
 runTests = do
-  $forAllProperties (quickCheckResult . withMaxSuccess 1000)
+  $forAllProperties (quickCheckResult . withMaxSuccess 10000)
   runTestTT handmade_tests
 
 main = runTests

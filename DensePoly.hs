@@ -14,7 +14,7 @@ instance Polynomial DensePoly where
     x = (P [0, 1])
     evalP (P tab) x = eval_array_taily x 0 1 tab
     shiftP n (P tab) = (P (reduce_array (shift_array n tab)))
-    degree (P tab) = (length tab) - 1
+    degree (P tab) = (length (reduce_array tab)) - 1
     nullP (P []) = True
     nullP _ = False
     
